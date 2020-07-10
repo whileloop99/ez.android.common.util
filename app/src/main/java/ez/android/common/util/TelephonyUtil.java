@@ -1,27 +1,29 @@
 package ez.android.common.util;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.telephony.TelephonyManager;
 
+import androidx.annotation.RequiresPermission;
+
 import java.lang.reflect.Method;
 
-import static android.content.Context.TELEPHONY_SERVICE;
 import static android.telephony.TelephonyManager.SIM_STATE_ABSENT;
 
 /**
- *
+ * Telephony utilities
  */
 public class TelephonyUtil {
 
     /**
-     *
+     * Start a phone call
      * @param context
      * @param phoneNumber
      */
-    @SuppressLint("MissingPermission")
+    @RequiresPermission(Manifest.permission.CALL_PHONE)
     public static void call(Context context, String phoneNumber) {
         Intent call = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + phoneNumber));
         call.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -29,13 +31,13 @@ public class TelephonyUtil {
     }
 
     /**
-     *
+     * End a phone call
      * @param context
      * @throws Exception
      */
     @SuppressLint("SoonBlockedPrivateApi")
     public static void endCall(Context context) throws Exception {
-        TelephonyManager tm = (TelephonyManager) context.getSystemService(TELEPHONY_SERVICE);
+        TelephonyManager tm = getManager(context);
 
         Method m1 = tm.getClass().getDeclaredMethod("getITelephony");
         m1.setAccessible(true);
@@ -49,12 +51,30 @@ public class TelephonyUtil {
     }
 
     /**
-     *
+     * Check if SIM is avaiable
      * @param context
      * @return
      */
     public static boolean checkSIMAvailable(Context context) {
-        TelephonyManager tm = (TelephonyManager) context.getSystemService(TELEPHONY_SERVICE);
-        return tm.getSimState() != SIM_STATE_ABSENT;
+        return getManager(context).getSimState() != SIM_STATE_ABSENT;
+    }
+
+    /**
+     * Get current phone number 1
+     * @param context
+     * @return
+     */
+    @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
+    public static String getPhoneNumber(Context context) {
+        return getManager(context).getLine1Number();
+    }
+
+    /**
+     * Get phone manager
+     * @param context
+     * @return
+     */
+    private static TelephonyManager getManager(Context context) {
+        return (TelephonyManager)context.getSystemService(Context.TELEPHONY_SERVICE);
     }
 }

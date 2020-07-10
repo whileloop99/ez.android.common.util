@@ -2,9 +2,20 @@ package ez.android.common.util;
 
 import org.joda.time.Period;
 
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 
+/**
+ * Date and time utilities
+ */
 public class DateTimeUtil {
+    /**
+     *
+     */
+    public static TimeZone TIME_ZONE = TimeZone.getDefault();
     /**
      * Check if time in range
      * @param timeToCheck 例　10：00
@@ -43,5 +54,26 @@ public class DateTimeUtil {
         int days = Period.parse(period).toStandardDays().getDays();
         calendar.add(Calendar.DAY_OF_MONTH, days);
         return calendar.getTimeInMillis();
+    }
+
+    /**
+     * Get datetime formatter
+     * @param format
+     * @param locale
+     * @return
+     */
+    public static SimpleDateFormat getDateTimeFormatter(String format, Locale locale) {
+        SimpleDateFormat sdf = new SimpleDateFormat(format, locale);
+        sdf.setTimeZone(TIME_ZONE);
+        return sdf;
+    }
+
+    /**
+     * Get current datetime string
+     * @param format
+     * @return
+     */
+    public static String getCurrentDateTimeString(String format) {
+        return getDateTimeFormatter(format, Locale.getDefault()).format(new Date());
     }
 }

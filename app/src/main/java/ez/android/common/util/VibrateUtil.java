@@ -6,8 +6,10 @@ import android.os.Build;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 
+import androidx.annotation.RequiresPermission;
+
 /**
- *
+ * Vibrate utilities
  */
 public class VibrateUtil {
 
@@ -16,7 +18,7 @@ public class VibrateUtil {
      * @param context
      * @param durationInMs
      */
-    @SuppressLint("MissingPermission")
+    @RequiresPermission(android.Manifest.permission.VIBRATE)
     public static void vibrateOneShot(Context context, long durationInMs) {
         Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
