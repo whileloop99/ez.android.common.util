@@ -4,6 +4,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.telephony.TelephonyManager;
 
@@ -67,6 +68,16 @@ public class TelephonyUtil {
     @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
     public static String getPhoneNumber(Context context) {
         return getManager(context).getLine1Number();
+    }
+
+    /**
+     * Check if a phone call is active
+     * @param context
+     * @return
+     */
+    public static boolean isCallActive(Context context){
+        AudioManager manager = (AudioManager)context.getSystemService(Context.AUDIO_SERVICE);
+        return manager.getMode() == AudioManager.MODE_IN_CALL;
     }
 
     /**

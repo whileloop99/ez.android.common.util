@@ -14,6 +14,7 @@ import android.provider.Settings;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
+import androidx.annotation.RequiresPermission;
 import androidx.core.app.ActivityCompat;
 
 import java.io.BufferedReader;
@@ -200,7 +201,7 @@ public class DeviceUtil {
      * @param context
      * @return
      */
-    @SuppressLint("MissingPermission")
+    @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
     public static UUID getDeviceUniqueId(Context context) {
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
             return null;
