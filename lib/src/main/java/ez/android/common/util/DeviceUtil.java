@@ -279,7 +279,7 @@ public class DeviceUtil {
      * @param context
      * @return
      */
-    @RequiresPermission(Manifest.permission.GET_ACCOUNTS)
+    @RequiresPermission(allOf = {Manifest.permission.GET_ACCOUNTS, Manifest.permission.READ_CONTACTS})
     public static List<String> getGoogleEmailAccounts(Context context) {
         AccountManager manager = AccountManager.get(context);
         Account[] accounts = manager.getAccountsByType("com.google");
