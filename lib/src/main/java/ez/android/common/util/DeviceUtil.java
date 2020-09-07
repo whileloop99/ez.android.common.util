@@ -82,7 +82,7 @@ public class DeviceUtil {
      *
      * @return MAC address
      */
-    @SuppressLint("MissingPermission")
+    @RequiresPermission(Manifest.permission.ACCESS_WIFI_STATE)
     public static String getWifiMacAddress(Context context) {
         WifiManager wifi = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         WifiInfo info = wifi.getConnectionInfo();
@@ -279,7 +279,7 @@ public class DeviceUtil {
      * @param context
      * @return
      */
-    @SuppressLint("MissingPermission")
+    @RequiresPermission(Manifest.permission.GET_ACCOUNTS)
     public static List<String> getGoogleEmailAccounts(Context context) {
         AccountManager manager = AccountManager.get(context);
         Account[] accounts = manager.getAccountsByType("com.google");
