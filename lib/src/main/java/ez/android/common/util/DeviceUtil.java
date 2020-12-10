@@ -12,6 +12,7 @@ import android.os.Build;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
+import android.text.format.Formatter;
 import android.util.Log;
 
 import androidx.annotation.RequiresPermission;
@@ -20,13 +21,21 @@ import androidx.core.app.ActivityCompat;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.math.BigInteger;
+import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
+
+import static android.content.Context.WIFI_SERVICE;
 
 /**
  * Android device utilities
@@ -82,12 +91,12 @@ public class DeviceUtil {
      *
      * @return MAC address
      */
+    @SuppressLint("HardwareIds")
     @RequiresPermission(Manifest.permission.ACCESS_WIFI_STATE)
     public static String getWifiMacAddress(Context context) {
-        WifiManager wifi = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        WifiManager wifi = (WifiManager) context.getApplicationContext().getSystemService(WIFI_SERVICE);
         WifiInfo info = wifi.getConnectionInfo();
-        String mac = info.getMacAddress();
-        return mac;
+        return info.getMacAddress();
     }
 
     /**
@@ -105,12 +114,56 @@ public class DeviceUtil {
         }
     }
 
+    /**
+     * Get IP address from first non-localhost interface
+     * @param useIPv4   true=return ipv4, false=return ipv6
+     * @return  address or empty string
+     */
+    public static String getIPAddress(boolean useIPv4) {
+        try {
+            List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
+            for (NetworkInterface nInfo : interfaces) {
+                List<InetAddress> addresses = Collections.list(nInfo.getInetAddresses());
+                for (InetAddress address : addresses) {
+                    if (!address.isLoopbackAddress()) {
+                        String add = address.getHostAddress();
+                        boolean isIPv4 = add.indexOf(':')<0;
+
+                        if (useIPv4) {
+                            if (isIPv4)
+                                return add;
+                        } else {
+                            if (!isIPv4) {
+                                int idx = add.indexOf('%'); // drop ip6 zone suffix
+                                return idx<0 ? add.toUpperCase() : add.substring(0, idx).toUpperCase();
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) { } // for now eat exceptions
+        return "";
+    }
+
+    @RequiresPermission(Manifest.permission.ACCESS_WIFI_STATE)
+    public static String getIPAddressFromWifiManager(Context context) {
+        WifiManager manager = (WifiManager) context.getApplicationContext().getSystemService(WIFI_SERVICE);
+        WifiInfo wifiInfo = manager.getConnectionInfo();
+        int ipInt = wifiInfo.getIpAddress();
+        try {
+            return InetAddress.getByAddress(
+                    ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(ipInt).array())
+                    .getHostAddress();
+        } catch (UnknownHostException ignored) {}
+        return null;
+    }
+
     /*
      * Load file content to String
      */
-    private static String loadFileAsString(String filePath) throws java.io.IOException{
-        StringBuffer fileData = new StringBuffer(1000);
-        BufferedReader reader = new BufferedReader(new FileReader(filePath));
+    private static String loadFileAsString(String path) throws java.io.IOException{
+        StringBuilder fileData = new StringBuilder(1000);
+        BufferedReader reader = new BufferedReader(new FileReader(path));
         char[] buf = new char[1024];
         int numRead=0;
         while((numRead=reader.read(buf)) != -1){
@@ -126,16 +179,17 @@ public class DeviceUtil {
      *
      * Please note that this ID will change when the device is factory reset.
      * Not recommend to use as device unique ID
-     * @param context
-     * @return
+     * @param context Android context
+     * @return Android ID
      */
+    @SuppressLint("HardwareIds")
     public static String getAndroidId(Context context) {
         return Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
     }
 
     /**
      * Get device elapsed real time in string
-     * @return
+     * @return Boot time string
      */
     public static String getBootTimeString() {
         long ut = SystemClock.elapsedRealtime() / 1000;
@@ -146,11 +200,12 @@ public class DeviceUtil {
 
     /**
      * Get device information summary
-     * @return
+     * @return Device system info
      */
+    @SuppressLint("HardwareIds")
     public static String printSystemInfo() {
         Date date = new Date(System.currentTimeMillis());
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
         String time = dateFormat.format(date);
         StringBuilder sb = new StringBuilder();
         sb.append("_______  INFO  ").append(time).append(" ______________");
@@ -172,41 +227,32 @@ public class DeviceUtil {
         sb.append("\nINCREMENTAL        :").append(Build.VERSION.INCREMENTAL);
 
         sb.append("\n_______ CUPCAKE-3 _______");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CUPCAKE) {
-            sb.append("\nDISPLAY            :").append(Build.DISPLAY);
-        }
+        sb.append("\nDISPLAY            :").append(Build.DISPLAY);
 
         sb.append("\n_______ DONUT-4 _______");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.DONUT) {
-            sb.append("\nSDK_INT            :").append(Build.VERSION.SDK_INT);
-            sb.append("\nMANUFACTURER       :").append(Build.MANUFACTURER);
-            sb.append("\nBOOTLOADER         :").append(Build.BOOTLOADER);
-            sb.append("\nCPU_ABI            :").append(Build.CPU_ABI);
-            sb.append("\nCPU_ABI2           :").append(Build.CPU_ABI2);
-            sb.append("\nHARDWARE           :").append(Build.HARDWARE);
-            sb.append("\nUNKNOWN            :").append(Build.UNKNOWN);
-            sb.append("\nCODENAME           :").append(Build.VERSION.CODENAME);
-        }
+        sb.append("\nSDK_INT            :").append(Build.VERSION.SDK_INT);
+        sb.append("\nMANUFACTURER       :").append(Build.MANUFACTURER);
+        sb.append("\nBOOTLOADER         :").append(Build.BOOTLOADER);
+        sb.append("\nCPU_ABI            :").append(Build.CPU_ABI);
+        sb.append("\nCPU_ABI2           :").append(Build.CPU_ABI2);
+        sb.append("\nHARDWARE           :").append(Build.HARDWARE);
+        sb.append("\nUNKNOWN            :").append(Build.UNKNOWN);
+        sb.append("\nCODENAME           :").append(Build.VERSION.CODENAME);
 
         sb.append("\n_______ GINGERBREAD-9 _______");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD) {
-            sb.append("\nSERIAL             :").append(Build.SERIAL);
-        }
+        sb.append("\nSERIAL             :").append(Build.SERIAL);
         Log.i(TAG, sb.toString());
         return sb.toString();
     }
 
     /**
      *
-     * @param context
-     * @return
+     * @param context Android context
+     * @return Device unique ID
      */
+    @SuppressLint("HardwareIds")
     @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
     public static UUID getDeviceUniqueId(Context context) {
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            return null;
-        }
-
         final TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
 
         String tmDevice = "", tmSerial = "", androidId;
@@ -220,8 +266,7 @@ public class DeviceUtil {
         } catch (Exception ignored) {}
         androidId = "" + android.provider.Settings.Secure.getString(context.getContentResolver(), android.provider.Settings.Secure.ANDROID_ID);
 
-        UUID deviceUuid = new UUID(androidId.hashCode(), ((long)tmDevice.hashCode() << 32) | tmSerial.hashCode());
-        return deviceUuid;
+        return new UUID(androidId.hashCode(), ((long)tmDevice.hashCode() << 32) | tmSerial.hashCode());
     }
 
     public static class Info {
@@ -245,8 +290,9 @@ public class DeviceUtil {
 
     /**
      *
-     * @return
+     * @return DeviceSuperInfo
      */
+    @SuppressLint("HardwareIds")
     public static Info getDeviceSuperInfo() {
         Info info = new Info();
         try {
@@ -268,16 +314,15 @@ public class DeviceUtil {
             info.user = android.os.Build.USER;
             info.host = android.os.Build.HOST;
 
-        } catch (Exception e) {
-        }
+        } catch (Exception ignored) { }
 
         return info;
     }
 
     /**
      * Get using gmail accounts
-     * @param context
-     * @return
+     * @param context Android context
+     * @return email list
      */
     @RequiresPermission(allOf = {Manifest.permission.GET_ACCOUNTS, Manifest.permission.READ_CONTACTS})
     public static List<String> getGoogleEmailAccounts(Context context) {
@@ -286,8 +331,6 @@ public class DeviceUtil {
         List<String> possibleEmails = new ArrayList<>();
 
         for (Account account : accounts) {
-            // TODO: Check possibleEmail against an email regex or treat
-            // account.name as an email address only for certain account.type values.
             possibleEmails.add(account.name);
         }
 
